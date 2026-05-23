@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sản Phẩm Cao Cấp - Thanh toán qua SePay</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Khu vực hiển thị sản phẩm -->
+        <div class="product-card" id="productCard">
+            <div class="product-image">
+                <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=600&auto=format&fit=crop" alt="Tai nghe cao cấp">
+            </div>
+            <div class="product-info">
+                <h2>Tai nghe Chống ồn Không dây</h2>
+                <p class="description">Trải nghiệm âm thanh đỉnh cao với công nghệ chống ồn chủ động (ANC) tốt nhất phân khúc.</p>
+                <div class="price">
+                    <span class="current-price">2,500,000đ</span>
+                    <span class="original-price">3,000,000đ</span>
+                </div>
+                <button id="buyButton" class="btn-primary">Mua Ngay</button>
+            </div>
+        </div>
+
+        <!-- Khu vực thanh toán (Mã QR) -->
+        <div class="payment-card hidden" id="paymentCard">
+            <button id="backButton" class="btn-back">← Quay lại</button>
+            <div class="payment-header">
+                <h2>Thanh Toán Đơn Hàng</h2>
+                <p>Quét mã QR qua ứng dụng ngân hàng để thanh toán tự động.</p>
+            </div>
+            
+            <div class="qr-container">
+                <img id="qrImage" src="" alt="Mã QR Thanh Toán">
+                <div class="loader hidden" id="qrLoader"></div>
+            </div>
+
+            <div class="order-details">
+                <div class="detail-row">
+                    <span>Mã đơn hàng:</span>
+                    <span id="orderIdDisplay" class="font-bold text-highlight">DH...</span>
+                </div>
+                <div class="detail-row">
+                    <span>Số tiền:</span>
+                    <span class="font-bold text-price">2,500,000 VNĐ</span>
+                </div>
+                <div class="detail-row">
+                    <span>Tình trạng:</span>
+                    <span class="status-badge pending">Đang chờ thanh toán...</span>
+                </div>
+            </div>
+
+            <div class="payment-instruction">
+                <p>Sau khi thanh toán thành công, hệ thống sẽ tự động xác nhận đơn hàng.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
