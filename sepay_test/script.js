@@ -54,7 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function checkPaymentStatus(orderId) {
         try {
-            const res = await fetch(`/api/check-status?orderId=${orderId}`);
+            // Gọi SePay API qua proxy, thêm timestamp tránh cache
+            const res = await fetch(`/api/check-payment?orderId=${orderId}&t=${Date.now()}`);
             const data = await res.json();
 
             if (data.paid) {

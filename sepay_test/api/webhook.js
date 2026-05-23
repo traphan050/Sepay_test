@@ -1,7 +1,6 @@
 // file: api/webhook.js
-import { readFileSync, writeFileSync } from 'fs';
-
-const ORDERS_FILE = '/tmp/paid_orders.json';
+// Chỉ cần nhận webhook và trả 200 cho SePay
+// Việc kiểm tra trạng thái được làm qua /api/check-payment
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -9,59 +8,30 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Kiểm tra API Key bảo mật
+        // Xác thực API Key
         const EXPECTED_API_KEY = process.env.SEPAY_API_KEY || '';
         const authHeader = req.headers['authorization'];
+        const token = (authHeader || '').replace('Apikey ', '');
 
-        if (!authHeader) {
-            console.error("Lỗi: Thiếu header Authorization");
-            return res.status(401).json({ success: false, message: 'Missing Authorization header' });
+        if (!authHeader || token !== EXPECTED_API_KEY) {
+            console.error('Xác thực thất bại:', authHeader);
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const token = authHeader.replace('Apikey ', '');
-        if (token !== EXPECTED_API_KEY) {
-            console.error("Lỗi: Sai API Key");
-            return res.status(401).json({ success: false, message: 'Invalid API Key' });
-        }
-
-        // Xử lý payload
+        // In thông tin giao dịch
         const payload = req.body;
-        console.log("============= NHẬN WEBHOOK SEPAY =============");
-        console.log(`Giao dịch ID: ${payload.id}`);
-        console.log(`Số tiền: ${payload.transferAmount} VNĐ`);
-        console.log(`Nội dung CK: ${payload.content}`);
-        console.log(`Mã đơn hàng: ${payload.code}`);
-        console.log("==============================================");
+        console.log('====== WEBHOOK SEPAY ======');
+        console.log('Mã đơn:', payload.code);
+        console.log('Số tiền:', payload.transferAmount, 'VNĐ');
+        console.log('Nội dung:', payload.content);
+        console.log('Loại:', payload.transferType);
+        console.log('===========================');
 
-        // Nếu tiền vào và có mã đơn hàng → ghi vào file tạm
-        if (payload.transferType === 'in' && payload.code) {
-            const orderCode = payload.code;
-            const amount = payload.transferAmount;
-
-            // Đọc danh sách đơn hiện có
-            let paidOrders = {};
-            try {
-                const raw = readFileSync(ORDERS_FILE, 'utf-8');
-                paidOrders = JSON.parse(raw);
-            } catch {
-                // File chưa có, tạo mới
-            }
-
-            // Ghi đơn hàng mới vào
-            paidOrders[orderCode] = {
-                amount,
-                paidAt: new Date().toISOString(),
-                transactionId: payload.id,
-            };
-
-            writeFileSync(ORDERS_FILE, JSON.stringify(paidOrders), 'utf-8');
-            console.log(`✅ Đã ghi nhận thanh toán: ${orderCode} = ${amount} đ`);
-        }
-
+        // Chỉ cần trả 200, việc check paid do frontend tự hỏi SePay API
         return res.status(200).json({ success: true });
 
     } catch (error) {
-        console.error("Lỗi xử lý webhook:", error);
-        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        console.error('Lỗi webhook:', error);
+        return res.status(500).json({ success: false });
     }
 }

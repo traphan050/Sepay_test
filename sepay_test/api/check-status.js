@@ -1,13 +1,13 @@
 // file: api/check-status.js
-// Frontend gọi API này để hỏi: "Đơn hàng X đã được thanh toán chưa?"
+import { kv } from '@vercel/kv';
 
-import { readFileSync } from 'fs';
+export default async function handler(req, res) {
+    // Tắt cache hoàn toàn
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
 
-const ORDERS_FILE = '/tmp/paid_orders.json';
-
-export default function handler(req, res) {
     if (req.method !== 'GET') {
-        return res.status(405).json({ paid: false, message: 'Method Not Allowed' });
+        return res.status(405).json({ paid: false });
     }
 
     const { orderId } = req.query;
@@ -16,12 +16,17 @@ export default function handler(req, res) {
     }
 
     try {
-        const raw = readFileSync(ORDERS_FILE, 'utf-8');
-        const paidOrders = JSON.parse(raw);
-        const isPaid = !!paidOrders[orderId];
-        return res.status(200).json({ paid: isPaid, orderId });
-    } catch {
-        // File chưa tồn tại → chưa có đơn nào được thanh toán
+        const data = await kv.get(`order:${orderId}`);
+        console.log(`Kiểm tra order:${orderId} →`, data);
+
+        if (data && data.paid) {
+            return res.status(200).json({ paid: true, orderId, ...data });
+        }
+
         return res.status(200).json({ paid: false, orderId });
+
+    } catch (error) {
+        console.error("Lỗi check-status:", error);
+        return res.status(500).json({ paid: false, message: 'Server error' });
     }
 }
