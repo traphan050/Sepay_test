@@ -1,0 +1,12 @@
+{
+  "name": "sepay-landing-page",
+  "version": "1.0.0",
+  "description": "SePay Integration with Vercel KV",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@vercel/kv": "^1.0.1"
+  }
+}
