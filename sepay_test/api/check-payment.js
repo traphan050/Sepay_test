@@ -1,8 +1,5 @@
 // file: api/check-payment.js
-// Gọi thẳng SePay API để kiểm tra giao dịch - KHÔNG cần database
-
 export default async function handler(req, res) {
-    // Tắt cache để browser không trả 304
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
 
@@ -17,15 +14,17 @@ export default async function handler(req, res) {
 
     const SEPAY_API_TOKEN = process.env.SEPAY_API_TOKEN;
     if (!SEPAY_API_TOKEN) {
-        console.error('Thiếu biến môi trường SEPAY_API_TOKEN');
-        return res.status(500).json({ paid: false, message: 'Server chưa cấu hình API Token' });
+        // Chưa cấu hình token → trả paid: false thay vì 500
+        console.warn('[check-payment] Chưa có SEPAY_API_TOKEN trong env vars!');
+        return res.status(200).json({ paid: false, orderId, debug: 'missing_token' });
     }
 
     try {
-        // Gọi SePay API để tìm giao dịch khớp với mã đơn hàng
-        const sePayUrl = `https://my.sepay.vn/userapi/transactions/list?transaction_description=${encodeURIComponent(orderId)}&limit=5`;
+        // Gọi SePay API - tìm giao dịch theo nội dung chuyển khoản
+        const url = `https://my.sepay.vn/userapi/transactions/list?transaction_description=${encodeURIComponent(orderId)}&limit=5`;
+        console.log('[check-payment] Gọi:', url);
 
-        const sePayRes = await fetch(sePayUrl, {
+        const sePayRes = await fetch(url, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${SEPAY_API_TOKEN}`,
@@ -33,29 +32,42 @@ export default async function handler(req, res) {
             },
         });
 
+        const rawText = await sePayRes.text();
+        console.log('[check-payment] SePay status:', sePayRes.status);
+        console.log('[check-payment] SePay raw response:', rawText.substring(0, 500));
+
         if (!sePayRes.ok) {
-            const errText = await sePayRes.text();
-            console.error('SePay API lỗi:', sePayRes.status, errText);
-            return res.status(200).json({ paid: false, message: 'Lỗi gọi SePay API' });
+            console.error('[check-payment] SePay API lỗi:', sePayRes.status);
+            return res.status(200).json({ paid: false, orderId, debug: `sepay_error_${sePayRes.status}` });
         }
 
-        const result = await sePayRes.json();
-        console.log(`Kiểm tra ${orderId}:`, JSON.stringify(result));
+        const result = JSON.parse(rawText);
 
-        // SePay trả về mảng transactions
-        const transactions = result?.transactions || result?.data || [];
+        // SePay có thể trả về nhiều cấu trúc khác nhau
+        const transactions = result?.transactions
+            || result?.data
+            || result?.data?.transactions
+            || [];
+
+        console.log('[check-payment] Tổng giao dịch tìm được:', transactions.length);
 
         // Tìm giao dịch có nội dung chứa mã đơn hàng
         const matched = transactions.find(tx => {
-            const content = (tx.transaction_content || tx.content || '').toUpperCase();
+            const content = (
+                tx.transaction_content ||
+                tx.content ||
+                tx.description ||
+                ''
+            ).toUpperCase();
             return content.includes(orderId.toUpperCase());
         });
 
         if (matched) {
+            console.log('[check-payment] ✅ Tìm thấy:', matched);
             return res.status(200).json({
                 paid: true,
                 orderId,
-                amount: matched.amount_in || matched.transferAmount,
+                amount: matched.amount_in || matched.transferAmount || matched.amount,
                 paidAt: matched.transaction_date || matched.transactionDate,
             });
         }
@@ -63,7 +75,8 @@ export default async function handler(req, res) {
         return res.status(200).json({ paid: false, orderId });
 
     } catch (error) {
-        console.error('Lỗi check-payment:', error);
-        return res.status(500).json({ paid: false, message: 'Lỗi server' });
+        console.error('[check-payment] Lỗi:', error.message);
+        // Trả 200 thay vì 500 để frontend không bị crash
+        return res.status(200).json({ paid: false, orderId, debug: error.message });
     }
 }
